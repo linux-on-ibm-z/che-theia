@@ -24,12 +24,15 @@ parse "$@"
 
 export CDN_PREFIX=https://static.developers.redhat.com/che/theia_artifacts/
 export MONACO_CDN_PREFIX=https://cdn.jsdelivr.net/npm/
+#env flag to build images using buildx
+export BUILDX=true
 
 install_deps
+buildx_support
 set +x
 load_jenkins_vars
 set -x
-buildImages
+buildImages $BUILDX
 publishImagesOnQuay
 
 set +x

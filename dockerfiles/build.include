@@ -58,6 +58,8 @@ init() {
   OPTIONS=""
   DOCKERFILE=""
   BUILD_ARGS=""
+  PLATFORM="linux/amd64"
+  BUILDX=""
 
   PARENT_IMAGE=""
   BRANCH=""
@@ -109,6 +111,12 @@ init() {
       --git-ref:*)
         GIT_REF="${1#*:}"
         shift ;;
+      --platform:*)
+        PLATFORM="${1#*:}"
+        shift ;;
+      --buildx:*)
+        BUILDX="${1#*:}"
+        shift ;;
       --*)
         printf "${RED}Unknown parameter: $1${NC}\n"; exit 2 ;;
       *)
@@ -116,6 +124,9 @@ init() {
     esac
   done
 
+  echo $ORGANIZATION
+  echo $PREFIX-$NAME
+  echo $TAG
   IMAGE_NAME="$ORGANIZATION/$PREFIX-$NAME:$TAG"
 }
 
@@ -218,7 +229,13 @@ build_image() {
   done
 
   if ! dry_run; then
-    cd "${DIR}" && docker build --cache-from ${IMAGE_NAME} -f ${DIR}/.Dockerfile -t ${IMAGE_NAME} ${BUILD_ARGS} ${DOCKER_BUILD_TARGET} .
+    echo ${IMAGE_NAME} ${BUILD_ARGS} ${DOCKER_BUILD_TARGET}
+    if [ -z "$BUILDX" ]; then
+      cd "${DIR}" && docker build --cache-from ${IMAGE_NAME} -f ${DIR}/.Dockerfile -t ${IMAGE_NAME} ${BUILD_ARGS} ${DOCKER_BUILD_TARGET} .
+    else
+      #Build the images locally using docker buildx
+      cd "${DIR}" && docker buildx build --cache-from ${IMAGE_NAME} --platform={PLATFORM} -f ${DIR}/.Dockerfile -t ${IMAGE_NAME} ${BUILD_ARGS} ${DOCKER_BUILD_TARGET} --progress plain --load .
+    fi
     rm ${DIR}/.Dockerfile
   fi
   

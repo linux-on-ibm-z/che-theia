@@ -73,17 +73,18 @@ getImages() {
 }
 
 buildImages() {
+  echo $1
   IFS=" " read -r -a IMG_LIST <<< "$(getImages)"
   for image_dir in "${IMG_LIST[@]}"
   do
     GITHUB_TOKEN_ARG="GITHUB_TOKEN=${GITHUB_TOKEN:-}"
     echo "Building image in ${image_dir}"
      if [ "$image_dir" == "dockerfiles/theia" ]; then
-       bash $(pwd)/$image_dir/build.sh --build-args:${GITHUB_TOKEN_ARG},THEIA_VERSION=${THEIA_VERSION},THEIA_COMMIT_SHA=${THEIA_COMMIT_SHA} --tag:${IMAGE_TAG} --branch:${THEIA_BRANCH} --git-ref:${THEIA_GIT_REFS} ${FILTERED_ARGS}
+       bash $(pwd)/$image_dir/build.sh --build-args:${GITHUB_TOKEN_ARG},THEIA_VERSION=${THEIA_VERSION},THEIA_COMMIT_SHA=${THEIA_COMMIT_SHA} --tag:${IMAGE_TAG} --branch:${THEIA_BRANCH} --git-ref:${THEIA_GIT_REFS} ${FILTERED_ARGS} --buildx:$1
      elif [ "$image_dir" == "dockerfiles/theia-dev" ]; then
-       bash $(pwd)/$image_dir/build.sh --build-arg:${GITHUB_TOKEN_ARG} --tag:${IMAGE_TAG} ${FILTERED_ARGS}
+       bash $(pwd)/$image_dir/build.sh --build-arg:${GITHUB_TOKEN_ARG} --tag:${IMAGE_TAG} ${FILTERED_ARGS} --buildx:$1
      else
-       bash $(pwd)/$image_dir/build.sh --build-arg:${GITHUB_TOKEN_ARG} --tag:${IMAGE_TAG} ${FILTERED_ARGS}
+       bash $(pwd)/$image_dir/build.sh --build-arg:${GITHUB_TOKEN_ARG} --tag:${IMAGE_TAG} ${FILTERED_ARGS} --buildx:$1
      fi
      if [ $? -ne 0 ]; then
        echo "ERROR:"
