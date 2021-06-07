@@ -131,7 +131,7 @@ jobs:
            #Set-up npmjs auth token
            printf "//registry.npmjs.org/:_authToken=${CHE_NPM_AUTH_TOKEN}\n" >> ~/.npmrc; 
            #Publish packages to npmjs
-           yarn publish:next
+           echo "yarn publish:next"
         fi
     - <<: *build-and-push-next
       name: Build & Publish image on arm64
@@ -228,7 +228,7 @@ jobs:
             #Set-up npmjs auth token
             printf "//registry.npmjs.org/:_authToken=${CHE_NPM_AUTH_TOKEN}\n" >> ~/.npmrc
             #Publish packages to npmjs
-            yarn publish:next 
+            echo "yarn publish:next"
         fi
     - <<: *prepare-release
       arch: arm64
