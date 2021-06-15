@@ -32,7 +32,6 @@ before_script:
       sed -i '/^cpu[0-9][0-9]/d' /tmp/stat
       sudo mount --bind /tmp/stat /proc/stat
     fi
-
 jobs:
   include: 
     - stage: PR Check
@@ -71,8 +70,8 @@ jobs:
       - |
         set -e
         docker image prune -a -f
-        docker pull quay.io/eclipse/che-theia-dev:next
-        docker tag quay.io/eclipse/che-theia-dev:next eclipse/che-theia-dev:next
+        docker pull quay.io/prabhav/che-theia-dev:next
+        docker tag quay.io/prabhav/che-theia-dev:next prabhav/che-theia-dev:next
         ./build.sh --arch:${TRAVIS_CPU_ARCH} --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.$DIST
     - <<: *docker-build
       name: Docker build (Alpine) on arm64
@@ -121,7 +120,7 @@ jobs:
     - &build-and-push-next
       stage: Build & Publish 'next'
       name: Build & Publish image on amd64 
-      if: type = push AND branch = master
+      if: type = push AND branch = travis-test
       arch: amd64
       script: 
       - |
@@ -132,7 +131,7 @@ jobs:
            #Set-up npmjs auth token
            printf "//registry.npmjs.org/:_authToken=${CHE_NPM_AUTH_TOKEN}\n" >> ~/.npmrc; 
            #Publish packages to npmjs
-           yarn publish:next
+           echo "yarn publish:next"
         fi
     - <<: *build-and-push-next
       name: Build & Publish image on arm64
@@ -145,13 +144,13 @@ jobs:
       name: Build & Publish image on s390x
 
     - stage: Publish multiarch image with 'next' tag
-      if: type = push AND branch = master
+      if: type = push AND branch = travis-test
       name: Publish multiarch image with next tag
       script: .travis/publish_multiarch.sh
 
     # publish-built-in-extension-report
     - name: Publish Built In Extension Report
-      if: (type = push AND branch=master) OR (type = cron AND branch=master)
+      if: (type = push AND branch=travis-test) OR (type = cron AND branch=travis-test)
       arch: amd64
       script: 
         - export DATE_TIME=$(date +"%Y-%m-%d")
@@ -166,8 +165,8 @@ jobs:
       - |
         set -e
         docker image prune -a -f
-        docker pull quay.io/eclipse/che-theia-dev:next
-        docker tag quay.io/eclipse/che-theia-dev:next eclipse/che-theia-dev:next
+        docker pull quay.io/prabhav/che-theia-dev:next
+        docker tag quay.io/prabhav/che-theia-dev:next prabhav/che-theia-dev:next
         ./build.sh --arch:${TRAVIS_CPU_ARCH} --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.alpine --build-args:THEIA_GITHUB_REPO=${THEIA_GITHUB_REPO} --branch:${THEIA_BRANCH}
     - <<: *check-a-theia-branch
       arch: arm64
@@ -187,7 +186,7 @@ jobs:
       - |  
         set +e
         git remote remove origin
-        git remote add origin https://${CHE_BOT_GITHUB_TOKEN}@github.com/eclipse-che/che-theia.git
+        git remote add origin https://${CHE_BOT_GITHUB_TOKEN}@github.com/linux-on-ibm-z/che-theia.git
         VERSION=${TAG}
         EXISTING_TAG=$(git ls-remote --exit-code origin refs/tags/${VERSION})
         if [[ -n ${EXISTING_TAG} ]]; then
@@ -212,7 +211,7 @@ jobs:
         export GITHUB_TOKEN=${CHE_BOT_GITHUB_TOKEN}
         export AKAMAI_CHE_AUTH=${AKAMAI_CHE_AUTH}
         git remote remove origin
-        git remote add origin https://${CHE_BOT_GITHUB_TOKEN}@github.com/eclipse-che/che-theia.git
+        git remote add origin https://${CHE_BOT_GITHUB_TOKEN}@github.com/linux-on-ibm-z/che-theia.git
         ./make-release.sh --version ${TAG}
     - &prepare-release
       stage: Release che-theia
@@ -229,7 +228,7 @@ jobs:
             #Set-up npmjs auth token
             printf "//registry.npmjs.org/:_authToken=${CHE_NPM_AUTH_TOKEN}\n" >> ~/.npmrc
             #Publish packages to npmjs
-            yarn publish:next 
+            echo "yarn publish:next"
         fi
     - <<: *prepare-release
       arch: arm64
