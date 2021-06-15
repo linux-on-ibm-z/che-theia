@@ -185,8 +185,7 @@ jobs:
       script:
       - |  
         set +e
-        git remote remove origin
-        git remote add origin https://${CHE_BOT_GITHUB_TOKEN}@github.com/linux-on-ibm-z/che-theia.git
+        git remote set-url origin https://${CHE_BOT_GITHUB_TOKEN}@github.com/linux-on-ibm-z/che-theia.git
         VERSION=${TAG}
         EXISTING_TAG=$(git ls-remote --exit-code origin refs/tags/${VERSION})
         if [[ -n ${EXISTING_TAG} ]]; then
@@ -210,8 +209,7 @@ jobs:
         git config --global user.email "mkuznets@redhat.com"
         export GITHUB_TOKEN=${CHE_BOT_GITHUB_TOKEN}
         export AKAMAI_CHE_AUTH=${AKAMAI_CHE_AUTH}
-        git remote remove origin
-        git remote add origin https://${CHE_BOT_GITHUB_TOKEN}@github.com/linux-on-ibm-z/che-theia.git
+        git remote set-url origin https://${CHE_BOT_GITHUB_TOKEN}@github.com/linux-on-ibm-z/che-theia.git
         ./make-release.sh --version ${TAG}
     - &prepare-release
       stage: Release che-theia
