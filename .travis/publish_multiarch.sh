@@ -4,10 +4,10 @@ set -e
 REGISTRY="quay.io"
 
 PUBLISH_IMAGES_LIST=(
-  eclipse/che-theia-dev
-  eclipse/che-theia
-  eclipse/che-theia-endpoint-runtime-binary
-  eclipse/che-theia-vsix-installer
+  prabhav/che-theia-dev
+  prabhav/che-theia
+  prabhav/che-theia-endpoint-runtime-binary
+  prabhav/che-theia-vsix-installer
 )
 
 SHORT_SHA=$(git rev-parse --short HEAD)
