@@ -17,10 +17,6 @@ env:
   global:
   - TAG=next
   - TRAVIS_TAG=travis
-  - CDN_PREFIX=https://static.developers.redhat.com/che/theia_artifacts/
-  - MONACO_CDN_PREFIX=https://cdn.jsdelivr.net/npm/
-  - RECREATE_TAGS=false
-  - PUSH_TO_NPMJS=true 
 
 before_script:
   - |
@@ -34,23 +30,13 @@ before_script:
     fi
 jobs:
   include: 
-    - stage: PR Check
-      if: type = pull_request 
-      # check EOF newline
-      name: Linelint (eof-newline)
-      arch: amd64
-      install: skip
-      script:
-      - docker run -it -v $(pwd):/data fernandrone/linelint:0.0.5
     - &node-build
+      stage: PR Check
       name: Node Build on amd64
       if: type = pull_request 
       arch: amd64
       install: skip
       script: yarn
-      #Test Coverage Report
-      after_success:
-        - if [[ "${TRAVIS_CPU_ARCH}" = "amd64" ]] ; then bash <(curl -s https://codecov.io/bash); fi
     - <<: *node-build
       name: Node Build on arm64
       arch: arm64
@@ -99,24 +85,6 @@ jobs:
       arch: s390x
       env: DIST=ubi8
 
-    #happy-path
-    - &happy-path
-      name: happy-path (alpine, next)
-      if: type = pull_request 
-      install: skip
-      env: DIST=alpine CHECTL_CHANNEL=next MINIKUBE_VERSION=v1.20.0
-      arch: amd64
-      script: ./.travis/happy-path-tests.sh
-    - <<: *happy-path
-      name: happy-path (alpine, stable)
-      env: DIST=alpine CHECTL_CHANNEL=stable MINIKUBE_VERSION=v1.20.0
-    - <<: *happy-path
-      name: happy-path (ubi8, next)
-      env: DIST=ubi8 CHECTL_CHANNEL=next MINIKUBE_VERSION=v1.20.0
-    - <<: *happy-path
-      name: happy-path (ubi8, stable)
-      env: DIST=ubi8 CHECTL_CHANNEL=stable MINIKUBE_VERSION=v1.20.0
-
     - &build-and-push-next
       stage: Build & Publish 'next'
       name: Build & Publish image on amd64 
@@ -127,12 +95,6 @@ jobs:
         set -e
         docker image prune -a -f
         ./build.sh --arch:${TRAVIS_CPU_ARCH} --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.alpine --push 
-        if [[ "${TRAVIS_CPU_ARCH}" = "amd64" ]] ; then 
-           #Set-up npmjs auth token
-           printf "//registry.npmjs.org/:_authToken=${CHE_NPM_AUTH_TOKEN}\n" >> ~/.npmrc; 
-           #Publish packages to npmjs
-           echo "yarn publish:next"
-        fi
     - <<: *build-and-push-next
       name: Build & Publish image on arm64
       arch: arm64
@@ -147,14 +109,6 @@ jobs:
       if: type = push AND branch = travis-test
       name: Publish multiarch image with next tag
       script: .travis/publish_multiarch.sh
-
-    # publish-built-in-extension-report
-    - name: Publish Built In Extension Report
-      if: (type = push AND branch=travis-test) OR (type = cron AND branch=travis-test)
-      arch: amd64
-      script: 
-        - export DATE_TIME=$(date +"%Y-%m-%d")
-        - .ci/publish-report.sh
 
     - &check-a-theia-branch
       stage: Check a Theia branch
@@ -179,39 +133,7 @@ jobs:
       name: Build an image against Theia branch on s390x
     
     #Release Workflow
-    - stage: Check existing tags
-      if: type = api AND env(TAG) IS present AND env(TAG) != "next"
-      arch: amd64
-      script:
-      - |  
-        set +e
-        git remote set-url origin https://${CHE_BOT_GITHUB_TOKEN}@github.com/linux-on-ibm-z/che-theia.git
-        VERSION=${TAG}
-        EXISTING_TAG=$(git ls-remote --exit-code origin refs/tags/${VERSION})
-        if [[ -n ${EXISTING_TAG} ]]; then
-          if [[ ${RECREATE_TAGS} == "true" ]]; then
-            echo "[INFO] Removing tag for ${VERSION} version. New tag will be recreated during release."
-            git push origin :$VERSION
-          else
-            echo "[ERROR] Cannot proceed with release - tag ${EXISTING_TAG} already exists."
-            exit 1
-          fi
-        else
-          echo "[INFO] No existing tags detected for $VERSION"
-        fi
-    - stage: Tag release
-      if: type = api AND env(TAG) IS present AND env(TAG) != "next"
-      arch: amd64
-      os: linux
-      script:
-      - |  
-        git config --global user.name "Mykhailo Kuznietsov"
-        git config --global user.email "mkuznets@redhat.com"
-        export GITHUB_TOKEN=${CHE_BOT_GITHUB_TOKEN}
-        export AKAMAI_CHE_AUTH=${AKAMAI_CHE_AUTH}
-        git remote set-url origin https://${CHE_BOT_GITHUB_TOKEN}@github.com/linux-on-ibm-z/che-theia.git
-        ./make-release.sh --version ${TAG}
-    - &prepare-release
+    - &release-che-theia
       stage: Release che-theia
       name: Build and publish image on amd64
       if: type = api AND env(TAG) IS present AND env(TAG) != "next"
@@ -222,32 +144,16 @@ jobs:
         git checkout "${BRANCH}"
         docker image prune -a -f
         ./build.sh --arch:${TRAVIS_CPU_ARCH} --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.alpine --push 
-        if [[ ${TRAVIS_CPU_ARCH} == "amd64" ]] && [[ ${PUSH_TO_NPMJS} == "true" ]]; then
-            #Set-up npmjs auth token
-            printf "//registry.npmjs.org/:_authToken=${CHE_NPM_AUTH_TOKEN}\n" >> ~/.npmrc
-            #Publish packages to npmjs
-            echo "yarn publish:next"
-        fi
-    - <<: *prepare-release
+    - <<: *release-che-theia
       arch: arm64
       name: Build and publish image on arm64
-    - <<: *prepare-release
+    - <<: *release-che-theia
       arch: ppc64le 
       name: Build and publish image on ppc64le
-    - <<: *prepare-release
+    - <<: *release-che-theia
       arch: s390x
       name: Build and publish image on s390x
 
     - stage: Publish multiarch image 
       if: type = api AND env(TAG) IS present AND env(TAG) != "next"
       script: .travis/publish_multiarch.sh
-      after_success:
-       - |
-         set -e
-         echo "{\"username\":\"che-bot\",\"channel\":\"eclipse-che-releases\",\"text\":\":white_check_mark: Che Theia ${TAG} has been released: https://quay.io/eclipse/che-theia-dev:${TAG} https://quay.io/eclipse/che-theia:${TAG} https://quay.io/eclipse/che-theia-endpoint-runtime-binary:${TAG} https://quay.io/eclipse/che-theia-vsix-installer:${TAG}\"}" > mattermost.json
-         curl -i -X POST -H 'Content-Type: application/json' -d @mattermost.json $MATTERMOST_WEBHOOK_URL
-      after_failure:
-       - |
-         set -e
-         echo "{\"username\":\"che-bot\",\"channel\":\"eclipse-che-releases\",\"text\":\":no_entry_sign: Che Theia ${TAG} release has failed: https://github.com/eclipse-che/che-theia/actions/workflows/release.yml\"}" > mattermost.json
-         curl -i -X POST -H 'Content-Type: application/json' -d @mattermost.json $MATTERMOST_WEBHOOK_URL
