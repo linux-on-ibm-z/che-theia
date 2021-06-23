@@ -7,12 +7,11 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  ***********************************************************************/
-import { ContainerModule, interfaces } from 'inversify';
 
-import { GithubResolver } from './github-resolver';
+export const cheHttpServicePath = '/services/http-service';
 
-const githubModule = new ContainerModule((bind: interfaces.Bind) => {
-  bind(GithubResolver).toSelf().inSingletonScope();
-});
+export const HttpService = Symbol('HttpService');
 
-export { githubModule };
+export interface HttpService {
+  get(url: string): Promise<string | undefined>;
+}
