@@ -12,7 +12,7 @@ name: Build & Publish `next`
 on:
   push:
     branches:
-      - main
+      - test-workflows
 
 jobs:
   build:
@@ -56,7 +56,7 @@ jobs:
       run: |
         body="{
         \"request\":{
-        \"branch\":\"main\"
+        \"branch\":\"test-workflows\"
         }}"
 
         curl -s -X POST \
@@ -65,4 +65,4 @@ jobs:
         -H "Travis-API-Version: 3" \
         -H "Authorization: token ${{ secrets.TRAVIS_TOKEN }}" \
         -d "$body" \
-        https://api.travis-ci.com/repo/eclipse-che%2Fche-theia/requests
+        https://api.travis-ci.com/repo/linux-on-ibm-z%2Fche-theia/requests

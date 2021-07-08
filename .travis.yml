@@ -1,5 +1,12 @@
+#
+# Copyright (c) 2021 Red Hat, Inc.
+# This program and the accompanying materials are made
+# available under the terms of the Eclipse Public License 2.0
+# which is available at https://www.eclipse.org/legal/epl-2.0/
+#
+# SPDX-License-Identifier: EPL-2.0
+#
 # Che-Theia workflow
-
 dist: focal
 os: linux
 cache: false
@@ -9,17 +16,7 @@ git:
 language: node_js
 node_js: "12"
 
-install:
-  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  - docker login quay.io -u="$QUAY_USERNAME " -p="$QUAY_PASSWORD"
-
-env: 
-  global:
-  - TAG=next
-  - TRAVIS_TAG=travis
-  - PR_NUMBER=
-
-before_script:
+before_install:
   - |
     if [[ "${TRAVIS_CPU_ARCH}" == "ppc64le" || "${TRAVIS_CPU_ARCH}" == "arm64" ]]
     then
@@ -29,6 +26,15 @@ before_script:
       sed -i '/^cpu[0-9][0-9]/d' /tmp/stat
       sudo mount --bind /tmp/stat /proc/stat
     fi
+
+install:
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  - docker login quay.io -u="$QUAY_USERNAME " -p="$QUAY_PASSWORD"
+
+env: 
+  global:
+  - TAG=next-travis
+  - PR_NUMBER=
 
 jobs:
   fast_finish: true
@@ -70,9 +76,9 @@ jobs:
       - |
         set -e
         docker image prune -a -f
-        docker pull quay.io/eclipse/che-theia-dev:next
-        docker tag quay.io/eclipse/che-theia-dev:next eclipse/che-theia-dev:next
-        ./build.sh --arch:${TRAVIS_CPU_ARCH} --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.$DIST
+        docker pull quay.io/prabhav/che-theia-dev:next-travis
+        docker tag quay.io/prabhav/che-theia-dev:next-travis prabhav/che-theia-dev:next-travis
+        TAG=$TAG-${TRAVIS_CPU_ARCH} ./build.sh --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.$DIST
     - <<: *docker-build
       name: Docker build (Alpine) on arm64
       arch: arm64
@@ -100,15 +106,15 @@ jobs:
       env: DIST=ubi8
 
     - &build-and-push-next
-      stage: Build & Publish 'next'
+      stage: Build & Publish 'next-travis'
       name: Build & Publish image on amd64 
-      if: type = api AND branch = main AND env(TAG) = "next"
+      if: type = api AND branch = test-workflows AND env(TAG) = "next-travis"
       arch: amd64
       script: 
       - |
         set -e
         docker image prune -a -f
-        ./build.sh --arch:${TRAVIS_CPU_ARCH} --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.alpine --push
+        TAG=$TAG-${TRAVIS_CPU_ARCH} ./build.sh --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.alpine --push
     - <<: *build-and-push-next
       name: Build & Publish image on arm64
       arch: arm64
@@ -119,10 +125,10 @@ jobs:
       arch: s390x
       name: Build & Publish image on s390x
 
-    - stage: Publish multiarch image with 'next' tag
-      if: type = api AND branch = main AND env(TAG) = "next"
-      name: Publish multiarch image with next tag
-      script: .travis/publish_multiarch.sh
+    - stage: Publish multiarch image with 'next-travis' tag
+      if: type = api AND branch = test-workflows AND env(TAG) = "next-travis"
+      name: Publish multiarch image with next-travis tag
+      script: .ci/travis/publish_multiarch.sh
 
     - &check-a-theia-branch
       stage: Check a Theia branch
@@ -133,9 +139,9 @@ jobs:
       - |
         set -e
         docker image prune -a -f
-        docker pull quay.io/eclipse/che-theia-dev:next
-        docker tag quay.io/eclipse/che-theia-dev:next eclipse/che-theia-dev:next
-        ./build.sh --arch:${TRAVIS_CPU_ARCH} --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.alpine --build-args:THEIA_GITHUB_REPO=${THEIA_GITHUB_REPO} --branch:${THEIA_BRANCH}
+        docker pull quay.io/prabhav/che-theia-dev:next-travis
+        docker tag quay.io/prabhav/che-theia-dev:next-travis prabhav/che-theia-dev:next-travis
+        TAG=$TAG-${TRAVIS_CPU_ARCH} ./build.sh --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.alpine --build-args:THEIA_GITHUB_REPO=${THEIA_GITHUB_REPO} --branch:${THEIA_BRANCH}
     - <<: *check-a-theia-branch
       arch: arm64
       name: Build an image against Theia branch on arm64
@@ -150,14 +156,15 @@ jobs:
     - &release-che-theia
       stage: Release che-theia
       name: Build and publish image on amd64
-      if: type = api AND env(TAG) IS present AND env(TAG) != "next"
+      if: type = api AND env(TAG) IS present AND env(TAG) != "next-travis"
       arch: amd64
       script:
       - |  
         BRANCH=${TAG%.*}.x
         git checkout "${BRANCH}"
+        TAG=$TAG-travis
         docker image prune -a -f
-        ./build.sh --arch:${TRAVIS_CPU_ARCH} --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.alpine --push
+        TAG=$TAG-${TRAVIS_CPU_ARCH} ./build.sh --root-yarn-opts:--ignore-scripts --dockerfile:Dockerfile.alpine --push 
     - <<: *release-che-theia
       arch: arm64
       name: Build and publish image on arm64
@@ -169,5 +176,5 @@ jobs:
       name: Build and publish image on s390x
 
     - stage: Publish multiarch image 
-      if: type = api AND env(TAG) IS present AND env(TAG) != "next"
-      script: .travis/publish_multiarch.sh
+      if: type = api AND env(TAG) IS present AND env(TAG) != "next-travis"
+      script: .ci/travis/publish_multiarch.sh
