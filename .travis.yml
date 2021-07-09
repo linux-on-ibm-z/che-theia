@@ -97,7 +97,7 @@ jobs:
     - &build-and-push-next
       stage: Build & Publish 'next'
       name: Build & Publish image on amd64 
-      if: type = api AND branch = main AND env(TAG) = "next"
+      if: type = api AND branch = travis-review AND env(TAG) = "next"
       arch: amd64
       script: 
       - |
@@ -115,7 +115,7 @@ jobs:
       name: Build & Publish image on s390x
 
     - stage: Publish multiarch image with 'next' tag
-      if: type = api AND branch = main AND env(TAG) = "next"
+      if: type = api AND branch = travis-review AND env(TAG) = "next"
       name: Publish multiarch image with next tag
       script: .travis/publish_multiarch.sh
 
