@@ -9,7 +9,7 @@
 #   Red Hat, Inc. - initial API and implementation
 ###
 # Builder Image
-#
+
 FROM #{INCLUDE:docker/${BUILD_IMAGE_TARGET}/builder-from.dockerfile}
 
 WORKDIR ${HOME}
